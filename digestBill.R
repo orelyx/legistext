@@ -19,13 +19,16 @@ library(cleanNLP)
 library(quanteda)
 library(glue)
 
+# "(^[ \t]*(Section|SECTION|SEC.)[ ]+[0-9]{1,9}[A-Z]{0,1}[-–]{0,1}[0-9]{0,3}[A-Z]{0,3}[.]{0,1}[ ]{0,1})"
+
 outlineTagRegex <- 
-  str_c("(?:^[ ]*[:punct:]{0,2}(?:Section|SECTION|SEC.)[ ]+[0-9-]{1,9}([a-z]{0,1})\\1{0,4}[.]{0,1}[ ]{0,1})|",
-        "(?:^[ ]*[:punct:]{0,2}TITLE[ ]+(?:[0-9]{1,9}|[IXV]{1,12})(?:-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)|",
-        "(?:^[ ]*[:punct:]{0,2}ARTICLE[ ]+(?:[0-9]{1,9}|[IXV]{1,12})(?:-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)|",
-        "(?:^[ ]*[:punct:]{0,2}SUBTITLE[ ]+(?:[0-9]{1,9}|[IXV]{1,12})(?:-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)|",
-        "(?:^[ ]*[:punct:]{0,2}CHAPTER[ ]+(?:[0-9]{1,9}|[IXV]{1,12})(?:-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)|",
+  str_c("(?:^[ ]*[:punct:]{0,2}(?:Section|SECTION|SEC.)[ ]+[0-9]{1,9}[A-Za-z]{0,3}[-–]{0,1}[0-9]{0,3}[A-Z]{0,3}[.]{0,1}[ ]{0,1})|",
+        "(?:^[ ]*[:punct:]{0,2}(?:TITLE|Title)[ ]+(?:[0-9]{1,9}|[IXV]{1,12})(?:-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)|",
+        "(?:^[ ]*[:punct:]{0,2}(?:ARTICLE|Article)[ ]+(?:[0-9]{1,9}|[IXV]{1,12})(?:-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)|",
+        "(?:^[ ]*[:punct:]{0,2}(?:SUBTITLE|Subtitle)[ ]+(?:[0-9]{1,9}|[IXV]{1,12}|[A-Z]{1,3})(?:-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)|",
+        "(?:^[ ]*[:punct:]{0,2}(?:CHAPTER|Chapter)[ ]+(?:[0-9]{1,9}|[IXV]{1,12})(?:-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)|",
         "(?:^[ ]*[:punct:]{0,2}(?:SUBCHAPTER|Subchapter)[ ]+(?:[0-9]{1,9}|[IXV]{1,12}[A-Z])(?:-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)|",
+        "(?:^[ ]*[:punct:]{0,2}(?:PART|Part)[ ]+(?:[0-9]{1,9}|[IXV]{1,12}[A-Z]{0,1}|[A-Z]{1,2})(?:-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)|",
         "(?:^[ ]*[:punct:]{0,2}§[ ]{0,1}[0-9-]{1,9}([a-z]{0,1})\\2{0,4}[\\.]{0,1}[ ]*)|",
         "(?:^[ ]*[:punct:]{0,2}[a-z]{1}[\\.]{1}[ ]*)|",                         # 2020-04-20 only lower-case
         "(?:^[ ]*[:punct:]{0,2}[(]{1}[a-zA-Z0-9]{1,2}[)]{1}[ ]*)|",
@@ -51,18 +54,25 @@ digestBill <- function(path, filename, name) {
     mutate(Page = cumsum(Line_Numbers == "1")) %>%
     select(Page, everything()) %>%
     mutate(Outline_Tag = str_extract(Text, outlineTagRegex)) %>%
-    mutate_at("Text", function(x) str_remove(x, outlineTagRegex)) %>%
-    mutate_at("Text", function(x) str_replace(x, "$", " ")) %>%
-    mutate_at("Text", function(x) str_replace(x, "- $", "")) %>%
-    mutate_at("Text", function(x) str_replace(x, "^[ ]*", "")) %>%
-    mutate_at("Text", function(x) str_replace(x, "[\t]+", " ")) %>%
-    mutate_at("Text", function(x) str_replace(x, "[ ]{2,}", " ")) %>%
+    
+    mutate(across(Text, ~str_remove(., outlineTagRegex))) %>%
+    mutate(across(Text, 
+                  ~str_replace_all(., c("$" = " ", "- $" = "", "^[ ]*" = "",
+                                        "[\t]+" = " ", "[ ]{2,}" = " ",
+                                        "—" = " ")))) %>%
+
+    # mutate_at("Text", function(x) str_remove(x, outlineTagRegex)) %>%
+    # mutate_at("Text", function(x) str_replace(x, "$", " ")) %>%
+    # mutate_at("Text", function(x) str_replace(x, "- $", "")) %>%
+    # mutate_at("Text", function(x) str_replace(x, "^[ ]*", "")) %>%
+    # mutate_at("Text", function(x) str_replace(x, "[\t]+", " ")) %>%
+    # mutate_at("Text", function(x) str_replace(x, "[ ]{2,}", " ")) %>%
     mutate(Quoted = sapply(Outline_Tag, function(x) { 
       quoted <- str_detect(x, "^[^\\(A-Za-z0-9]+")
       if (is.na(quoted)) { FALSE } else { quoted }
     })) %>%
     mutate_at("Outline_Tag", function(x) (str_replace(x, "[ ]+$", " "))) %>%
-    mutate_at("Outline_Tag", function(x) (str_replace(x, "^[^\\(A-Za-z0-9]*", ""))) %>%
+    mutate_at("Outline_Tag", function(x) (str_replace(x, "^[^\\(A-Za-z0-9§]*", ""))) %>%
     mutate(Item = cumsum(!is.na(Outline_Tag))) %>%
     mutate(Page_Line = str_c(as.character(Page), ".", as.character(Line_Numbers))) %>%
     select(Item, Page_Line, Outline_Tag, everything())
