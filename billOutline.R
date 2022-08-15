@@ -23,41 +23,44 @@ library(cleanNLP)
 library(quanteda)
 library(glue)
 
+# Some people, when confronted with a problem, think
+# “I know, I'll use regular expressions.” Now they have two problems.
+#                   -- Jamie Zawinski; see http://regex.info/blog/2006-09-15/247
 
 outlineTags <- 
-      c("(^[ \t]*TITLE[ ]+([0-9]{1,9}|[IXV]{1,12})(-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)",      # 1
-        "(^[ \t]*ARTICLE[ ]+([0-9]{1,9}|[IXV]{1,12})(-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)",    # 1
-        "(^[ \t]*SUBTITLE[ ]+([0-9]{1,9}|[IXV]{1,12})(-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)",   # 1
-        "(^[ \t]*CHAPTER[ ]+([0-9]{1,9}|[IXV]{1,12})(-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)",    # 1
-        "(^[ \t]*(SUBCHAPTER|Subchapter)[ ]+([0-9]{1,9}|[IXV]{1,12})(-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)", # 1
-        "(^[ \t]*PART[ ]+([0-9]{1,9}|[IXV]{1,12})(-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)",       # 1
-        "(^[ \t]*(Section|SECTION|SEC.)[ ]+[0-9-]{1,9}[.]{0,1}[ ]{0,1})",                 # 2
-        "(^[ \t]*§[ ]{0,1}[0-9-]{1,9}[a-z]{0,1}[.]{0,1}[ ]*)",                            # 2
-        "(^[ \t]*[(]{1}[a-z]{1}[)]{1}[ ]*)",                                              # 3
-        "(^[ \t]*[(]{1}[0-9]{1,3}[)]{1}[ ]*)",                                            # 4
-        "(^[ \t]*[(]{1}[A-Z]{1}[)]{1}[ ]*)",                                              # 5
-        "(^[ \t]*[(][ivx]+[)][ ]*)",                                                      # 6
-        "(^[ \t]*[(][IVX]+[)][ ]*)",                                                      # 7
-        "(^[ \t]*[(]{1}[a-z]{2}[)]{1}[ ]*)",                                              # 8
-        "(^[ \t]*[(]{1}[A-Z]{2}[)]{1}[ ]*)"                                               # 9
+      c("(^[ \t]*(TITLE|Title)[ ]+([0-9]{1,9}|[IXV]{1,12})(-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)",      # 1
+        "(^[ \t]*(ARTICLE|Article)[ ]+([0-9]{1,9}|[IXV]{1,12})(-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)",    # 1
+        "(^[ \t]*(SUBTITLE|Subtitle)[ ]+([0-9]{1,9}|[IXV]{1,12}|[A-Z]{1,3})(-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)",   # 2
+        "(^[ \t]*(CHAPTER|Chapter)[ ]+([0-9]{1,9}|[IXV]{1,12})(-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)",    # 2
+        "(^[ \t]*(SUBCHAPTER|Subchapter)[ ]+([0-9]{1,9}|[IXV]{1,12})(-[A-Za-z]{1}){0,1}[.]{0,1}[ ]*)", # 2
+        "(^[ \t]*(PART|Part)[ ]+([0-9]{1,9}|([IXV]{1,12})(-[A-Za-z]{1})|[A-Z]{1,2}){0,1}[.]{0,1}[ ]*)",       # 2
+        "(^[ \t]*(Section|SECTION|SEC.)[ ]+[0-9]{1,9}[A-Z]{0,1}[-–]{0,1}[0-9]{0,3}[A-Z]{0,3}[.]{0,1}[ ]{0,1})",      # 3
+        "(^[ \t]*§[ ]{0,1}[0-9-]{1,9}[a-z]{0,1}[.]{0,1}[ ]*)",                            # 3
+        "(^[ \t]*[(]{1}[a-z]{1}[)]{1}[ ]*)",                                              # 4
+        "(^[ \t]*[(]{1}[0-9]{1,3}[)]{1}[ ]*)",                                            # 5
+        "(^[ \t]*[(]{1}[A-Z]{1}[)]{1}[ ]*)",                                              # 6
+        "(^[ \t]*[(][ivx]+[)][ ]*)",                                                      # 7
+        "(^[ \t]*[(][IVX]+[)][ ]*)",                                                      # 8
+        "(^[ \t]*[(]{1}[a-z]{2}[)]{1}[ ]*)",                                              # 9
+        "(^[ \t]*[(]{1}[A-Z]{2}[)]{1}[ ]*)"                                               # 10
       )
 
 matchIndices <- c("TITLE", "ARTICLE", "SUBTITLE", "CHAPTER", "SUBCHAPTER", "PART", 
-                "Section09", "§09", "(az)", "(09)", "(AZ)", "(ivx)", "(IVX)",
-                "(az2)", "(AZ2)")
+                  "Section09", "§09", "(az)", "(09)", "(AZ)", "(ivx)", "(IVX)",
+                  "(az2)", "(AZ2)")
 # Will have to refer to these using backquotes ``
 for (m in matchIndices) {
   assign(m, first(which(matchIndices == m)))
 }
 
-tagIndices <- c("BIG_PART", "SECTION", "p_az", "p_09", "p_AZ", "p_ivx", "p_IVX", "p_az2", "p_AZ2")
+tagIndices <- c("BIG_PART", "BIG_SUBPART", "SUBPART", "SECTION", "p_az", "p_09", "p_AZ", "p_ivx", "p_IVX", "p_az2", "p_AZ2")
 for (n in tagIndices) {
   assign(n, first(which(tagIndices == n)))
 }
-tagLevels <- c(BIG_PART, BIG_PART, BIG_PART, BIG_PART, BIG_PART, BIG_PART, 
+tagLevels <- c(BIG_PART, BIG_PART, BIG_SUBPART, BIG_SUBPART, SUBPART, SUBPART, 
                SECTION, SECTION, p_az, p_09, p_AZ, p_ivx, p_IVX, p_az2, p_AZ2)
 firstTag <- function(d) {   # look up the first tag value at a given depth
-  c("", "", "(a)", "(1)", "(A)", "(i)", "(I)", "(aa)", "(AA)")[d]
+  c("", "", "", "", "(a)", "(1)", "(A)", "(i)", "(I)", "(aa)", "(AA)")[d]
 }
 
 dropWords <- read_delim("first1000.csv", delim = ",", escape_double = FALSE, trim_ws = TRUE) %>%
@@ -137,14 +140,47 @@ processOutline <- function(bill) {
   
   currentSection <- ""
   
+  # outlineTag(): Create an outline tag indicating the location of the current 
+  # line or paragraph in the hierarchic structure of the bill. Note that there 
+  # are actually two hierarchic structures in play: the structure of the bill, 
+  # and the structure of the federal law the code is amending. Hence, for each 
+  # line, we give its location in the bill structure, followed where applicable
+  # by the location of the text it interpolates into the US Code in the 
+  # hierarchic structure of the US Code. Where a line/paragraph contains inter-
+  # polated text, we put the location in the bill structure in [] square 
+  # brackets. In both cases, we show the TITLE+Subtitle+PART+Subpart portion of 
+  # the location only if there is no subsection information following the 
+  # section number; otherwise, we only show the location information starting 
+  # with the section number. 
+  # Note use of if(){}-expressions; review an R tutorial if this is confusing. 
   outlineTag <- function(i) { 
     if (inInterpolation(i)) {
-      trimws(str_c("[", 
-                   str_c(carriedTags, collapse = ""), 
-                   "] ", 
-                   str_c(interpolationTags, collapse = "")))
+      trimws(str_c(
+        "[", 
+        if (str_length(glue_collapse(carriedTags[p_az:p_AZ2])) > 0) {
+          str_squish(str_c(carriedTags[SECTION:p_AZ2], collapse = ""))
+        } else {
+          str_c(str_squish(str_c(carriedTags[BIG_PART:SECTION], 
+                                 collapse = " ")), 
+                str_c(carriedTags[p_az:p_AZ2], collapse = ""))
+        },
+        "] ",
+        if (str_length(glue_collapse(interpolationTags[p_az:p_AZ2])) > 0) {
+          str_squish(str_c(interpolationTags[SECTION:p_AZ2], collapse = ""))
+        } else {
+          str_c(str_squish(str_c(interpolationTags[BIG_PART:SECTION], 
+                                 collapse = " ")), 
+                str_c(interpolationTags[p_az:p_AZ2], collapse = ""))
+        }))
     } else {
-      trimws(str_c(carriedTags, collapse = ""))
+      trimws(str_c(
+        if (str_length(glue_collapse(carriedTags[p_az:p_AZ2])) > 0) {
+          str_squish(str_c(carriedTags[SECTION:p_AZ2], collapse = ""))
+        } else {
+          str_c(str_squish(str_c(carriedTags[BIG_PART:SECTION], 
+                                 collapse = " ")), 
+                str_c(carriedTags[p_az:p_AZ2], collapse = ""))
+        }))
     }
   }
   
@@ -166,15 +202,15 @@ processOutline <- function(bill) {
   # even deal with Roman numerals!
   tagsAreConsecutive <- function(tag1, tag2) {
     # browser()
-    t1 <- str_remove_all(tag1, "[()]")
-    t2 <- str_remove_all(tag2, "[()]")
-    t1n <- suppressWarnings(as.integer(str_extract(t1, "[0-9]+")))
-    t2n <- suppressWarnings(as.integer(str_extract(t2, "[0-9]+")))
+    t1 <- trimws(str_remove_all(tag1, "[()]"))
+    t2 <- trimws(str_remove_all(tag2, "[()]"))
+    t1n <- suppressWarnings(as.integer(str_extract(t1, "[0-9]+[\\.]{0,1}$")))
+    t2n <- suppressWarnings(as.integer(str_extract(t2, "[0-9]+[\\.]{0,1}$")))
     if (!is.na(t1n) & !is.na(t2n)) {
       t2n == t1n + 1
     } else {
-      t1az <- str_extract(t1, "[a-zA-Z]+")
-      t2az <- str_extract(t2, "[a-zA-Z]+")
+      t1az <- str_remove(str_extract(t1, "[a-zA-Z]+[\\.]{0,1}$"), "[\\.]{1}$")
+      t2az <- str_remove(str_extract(t2, "[a-zA-Z]+[\\.]{0,1}$"), "[\\.]{1}$")
       if (is.na(t1az) | is.na(t2az)) {
         FALSE
       } else if (((str_to_lower(t1az) != t1az) & (str_to_upper(t1az) != t1az)) |
@@ -200,8 +236,8 @@ processOutline <- function(bill) {
     if (depth > SECTION) {
       trimws(tag)
     } else if (depth == SECTION) {
-      myTag <- str_replace(tag, "Section ", "SEC. ")
-      if (!str_detect(myTag, "SEC.")) {
+      myTag <- str_replace_all(tag, c("Section " = "SEC. "))
+      if (!str_detect(myTag, "(SEC.|§)")) {
         myTag <- str_c("SEC. ", trimws(myTag))
       }
       # Following lines are needed only if we can have section numbers like "13.1":
@@ -222,14 +258,14 @@ processOutline <- function(bill) {
     currentSection <- str_extract(processedBill$Outline[1], "[0-9-.]+")
     carriedTags[SECTION] <- str_c("SEC. ", currentSection)
   } else {
-    message("Expected first section number not found.")
+    message("Expected first section number (1) not found.")
     currentSection <- NA
     carriedTags[depth] <- processedBill$Outline[1]
   }
   processedBill$Tag[1] <- outlineTag(1)
   
   for (i in 2:length(processedBill$Outline)) {
-    # if (i == 182) {
+    # if (i %in% c(4717,4739,4748,4759,4790,4808)) {
     #   browser()
     # }
     newDepth <- processedBill$Level1[i]
@@ -255,15 +291,21 @@ processOutline <- function(bill) {
     if ((newDepth == p_az) & 
         !is.na(str_extract(newTag, "[()ivx]+")) &
         (newTag == str_extract(newTag, "[()ivx]+"))) {
-      if ((depth >= p_AZ) & (!(priorTag %in% c("(h)", "(u)", "(w)")) |
-                             ((nextDepth == p_ivx) && tagsAreConsecutive(newTag, nextTag)))) {
+      if ((depth >= p_az) & 
+          (!(priorTag %in% c("(h)", "(u)", "(w)") |
+             str_detect(processedBill$Text[i - 1], 
+                        "after subsection (\\(h\\)|\\(u\\)|\\(w\\))")) |
+           ((nextDepth == p_ivx) && tagsAreConsecutive(newTag, nextTag)))) {
         newDepth <- p_ivx
       }
     } else if ((newDepth == p_AZ) & 
                !is.na(str_extract(newTag, "[()IVX]+")) &
                (newTag == str_extract(newTag, "[()IVX]+"))) {
-      if ((depth >= p_ivx) & (!(priorTag %in% c("(H)", "(U)", "(W)")) |
-                              ((nextDepth == p_IVX) & tagsAreConsecutive(newTag, nextTag)))) {
+      if ((depth >= p_az) & 
+          (!(priorTag %in% c("(H)", "(U)", "(W)") |
+             str_detect(processedBill$Text[i - 1], 
+                        "after subsection (\\(H\\)|\\(U\\)|\\(W\\))")) |
+           ((nextDepth == p_IVX) & tagsAreConsecutive(newTag, nextTag)))) {
         newDepth <- p_IVX
       }
     }
@@ -272,49 +314,98 @@ processOutline <- function(bill) {
     # beginning of a line, but isn't. 
     spuriousTag <- FALSE
     if (inInterpolation(i)) {
-      if (((newDepth > (interpolationDepth + 1)) &
-           (interpolationDepth > 0)) |
-          ((newDepth == (interpolationDepth + 1)) &
-           (newDepth >= p_az) &       # checks are only valid for p_az and below
-           (newTag != firstTag(newDepth))) |
-          ((newDepth <= interpolationDepth) &
-           (newDepth >= p_az) &       # checks are only valid for p_az and below
-           (!tagsAreConsecutive(interpolationTags[newDepth], newTag) |
-            str_detect(str_to_lower(processedBill$Text[i - 1]), "paragraph$") |
-            str_detect(str_to_lower(processedBill$Text[i - 1]), "subsection$") |
-            (!inInterpolation(i - 1) & (substr(processedBill$Text[i - 1], 
-                                               str_length(processedBill$Text[i - 1]),
-                                               str_length(processedBill$Text[i - 1])) != ":"))))) {
+      if (
+        str_detect(processedBill$Text[i], "^,") |
+        ((newDepth >= (interpolationDepth + 1)) &
+         (newDepth >= p_az) &       # checks are only valid for p_az and below
+         # Unexpected first tag doesn't matter at the beginning of an interpolation. 
+         (interpolationDepth > 0) & (newTag != firstTag(newDepth))) |
+        ((newDepth <= interpolationDepth) &
+         (newDepth >= p_az) &       # checks are only valid for p_az and below
+         # Text line doesn't start with an all-capitals word
+         (is.na(str_match(processedBill$Text[i], "[A-Za-z]{2,12}")[,1]) |
+          str_to_upper(str_match(processedBill$Text[i], "[A-Za-z]{2,12}")[,1]) != 
+          str_match(processedBill$Text[i], "[A-Za-z]{2,12}")[,1]) &
+         ((interpolationDepth > 0) &
+          # Non-consecutive tags only matters if interpolationDepth > 0
+          ((!tagsAreConsecutive(interpolationTags[newDepth], newTag) &
+            !tagsAreConsecutive(newTag, nextTag))) |
+          # Tag is spurious if preceding line is a partial sentence ending in certain words
+          str_detect(str_to_lower(processedBill$Text[i - 1]), 
+                     str_c("((sub){0,1}paragraph(s){0,1}$|",
+                           "(sub){0,1}section(s){0,1}$|",
+                           "item(s){0,1}$|(sub){0,1}clause(s){0,1}$|",
+                           "through$)"))) |
+         # Preceding line was not interpolation and didn't end in ":" 
+         (!inInterpolation(i - 1) & 
+          (substr(processedBill$Text[i - 1], 
+                  str_length(processedBill$Text[i - 1]),
+                  str_length(processedBill$Text[i - 1])) != ":") &
+          (!tagsAreConsecutive(interpolationTags[newDepth], newTag) &
+           !tagsAreConsecutive(newTag, nextTag))))) {
         spuriousTag <- TRUE
       }
     } else { # not in an interpolation; do analogous checks
-      if ((newDepth > (carriedDepth + 1)) |
-          ((newDepth == (carriedDepth + 1)) &
-           (newDepth >= p_az) &       # checks are only valid for p_az and below
-           (newTag != firstTag(newDepth))) |
-          ((newDepth <= carriedDepth) &
-           (newDepth >= p_az) &       # checks are only valid for p_az and below
-           (!tagsAreConsecutive(carriedTags[newDepth], newTag) | 
-            str_detect(str_to_lower(processedBill$Text[i - 1]), "paragraph$") |
-            str_detect(str_to_lower(processedBill$Text[i - 1]), "subsection$") |
-            (inInterpolation(i - 1) & 
-             !str_detect(processedBill$Text[i - 1], ".$") &
-             !str_detect(processedBill$Text[i - 1], "and$") &
-             !str_detect(processedBill$Text[i - 1], "or$"))))) {
+      if (
+        str_detect(processedBill$Text[i], 
+                   str_c("(^,|^of |^(\\([A-Za-z0-9]\\)){1,3},|",
+                         "^(\\([A-Za-z0-9]\\)){1,3} of |",
+                         "^(\\([A-Za-z0-9]\\)){0,3} is amended )")) |
+        (str_detect(str_to_lower(processedBill$Text[i - 1]), 
+                   str_c("((sub){0,1}paragraph(s){0,1}$|",
+                         "(sub){0,1}section(s){0,1}$|",
+                         "item(s){0,1}$|(sub){0,1}clause(s){0,1}$|",
+                         "through$)")) &
+         # Prior line ending in "paragraph(s)" etc. indicates a spurious tag 
+         # unless the line-ending is preceded by "this" or "such". 
+         !str_detect(str_to_lower(processedBill$Text[i - 1]), 
+                     "(this|such) [a-z]+$")) |
+        ((newDepth >= (carriedDepth + 1)) &
+         # checks are only valid for p_az and below
+         (newDepth >= p_az) & (newTag != firstTag(newDepth))) |
+        ((newDepth <= carriedDepth) & 
+         ((!tagsAreConsecutive(carriedTags[newDepth], newTag) & 
+           str_detect(processedBill$Text[i], "amended") &
+           str_detect(processedBill$Text[i], ":$")) |
+          (!tagsAreConsecutive(carriedTags[newDepth], newTag) &
+           tagsAreConsecutive(carriedTags[depth], nextTag)) |
+          (str_detect(processedBill$Text[i], 
+                      str_c("(", 
+                            outlineTags[first(which(tagLevels == newDepth)) + 1], 
+                            "|",
+                            "^of )")) &
+           (!tagsAreConsecutive(carriedTags[newDepth], newTag) |
+            processedBill$Tokens[i][[1]][2] == "of")) |
+          (inInterpolation(i - 1) & 
+           (!tagsAreConsecutive(carriedTags[newDepth], newTag) &
+            (!str_detect(processedBill$Text[i - 1], "(\\.|;)[ ]{0,1}$"))))))) {
         spuriousTag <- TRUE
       }
-    }
+    } 
+    # !tagsAreConsecutive(carriedTags[newDepth], newTag)
     if (spuriousTag) {
       # browser()
-      processedBill$Text[i - 1] <- 
-        str_c(processedBill$Text[i - 1],
-              ifelse(last_char(processedBill$Text[i - 1]) != " ", " ", ""),
-              newTag,
+      lastNotOmitted <- max(which(!processedBill$Omit[1:(i - 1)]))
+      processedBill$Text[lastNotOmitted] <- 
+        str_c(processedBill$Text[lastNotOmitted],
+              ifelse(last_char(processedBill$Text[lastNotOmitted]) != " ", " ", ""),
+              processedBill$Outline[i],   # In this case we don't massage
               ifelse(str_detect(processedBill$Text[i], "^[[:punct:]]"), 
                      "",
                      " "),
               processedBill$Text[i])
-      processedBill$Quoted[i] <- processedBill$Quoted[i - 1]
+      processedBill$Outline[i] <- newTag <- ""
+      if (inInterpolation(lastNotOmitted)) {
+        newDepth <- interpolationDepth
+        priorTag <- interpolationTags[interpolationDepth]
+      } else {
+        newDepth <- carriedDepth
+      }
+      processedBill$Page_Lines[lastNotOmitted] <- 
+        str_c(str_match(processedBill$Page_Lines[lastNotOmitted], 
+                        "(^[0-9]+\\.[0-9]+ - )")[,1],
+              str_match(processedBill$Page_Lines[i], "[0-9]+\\.[0-9]+$")[,1])
+      processedBill$Quoted[i] <- processedBill$Quoted[lastNotOmitted]
       processedBill$Omit[i] <- TRUE
     } else {
       if (inInterpolation(i)) {
@@ -327,18 +418,27 @@ processOutline <- function(bill) {
         priorTag <- carriedTags[newDepth]
         interpolationTags[1:p_AZ2] <- ""
         interpolationDepth <- 0
-        carriedTags[newDepth] <- massageFormat(newDepth, processedBill$Outline[i])
+        if (processedBill$Outline[i] != "") {
+          carriedTags[newDepth] <- massageFormat(newDepth, processedBill$Outline[i])
+        }
         if(newDepth < p_AZ2) {
           carriedTags[(newDepth + 1):p_AZ2] <- ""
         }
       }
       if (newDepth <= depth) {
         if (priorTag != "") {
-          unexpectedBreak <- (inInterpolation(i) & !tagsAreConsecutive(priorTag, interpolationTags[newDepth])) |
-            (!inInterpolation(i) & !tagsAreConsecutive(priorTag, carriedTags[newDepth]))
+          unexpectedBreak <- !((newTag == "") & (priorTag == carriedTags[newDepth])) &
+            ((inInterpolation(i) & !tagsAreConsecutive(priorTag, interpolationTags[newDepth])) |
+               (!inInterpolation(i) & !tagsAreConsecutive(priorTag, carriedTags[newDepth]))) 
           if (unexpectedBreak) {
+            if (inInterpolation(i)) {
+              tag <- interpolationTags[newDepth]
+            } else {
+              tag <- carriedTags[newDepth]
+            }
             message(str_c("Unexpected break in outline tag succession at item ", 
-                          as.character(processedBill$Item[i])))
+                          as.character(processedBill$Item[i]),
+                          ": tag1: '", priorTag, "' tag2: '", tag), "'")
           }
         }
       } else { # newDepth > depth 

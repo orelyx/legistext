@@ -4,3 +4,6 @@
 .Ruserdata
 *.jpg
 .tsv
+*-keywords.csv
+tidybill.txt
+/.project
